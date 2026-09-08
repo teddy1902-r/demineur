@@ -1,211 +1,162 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Démineur 15x15</title>
-<style>
-*{box-sizing:border-box}
-body{
-  margin:0;min-height:100vh;display:flex;justify-content:center;align-items:center;
-  font-family:Arial,sans-serif;background:#1b102b;color:#fff;
-}
-.container{text-align:center;padding:20px}
-h1{margin:0 0 10px;font-size:28px}
-.info{margin-bottom:15px;color:#d9c8e8}
-#status{min-height:24px;margin:10px 0;font-weight:bold}
-#game{
-  display:grid;grid-template-columns:repeat(15,1fr);gap:2px;
-  width:min(90vw,600px);aspect-ratio:1/1;margin:auto;
-  user-select:none;-webkit-user-select:none;touch-action:manipulation;
-}
-.cell{
-  border:0;border-radius:3px;background:#6b4b83;color:#fff;
-  font-weight:bold;font-size:clamp(10px,2.5vw,20px);cursor:pointer;
-  display:flex;align-items:center;justify-content:center;padding:0;
-}
-.cell:hover{background:#7d5a96}
-.cell.revealed{background:#d8cce0;color:#24142f;cursor:default}
-.cell.flagged{background:#8b5f9f}
-.cell.mine{background:#b54b5a}
-button#restart{
-  margin-top:18px;padding:10px 18px;border:0;border-radius:8px;
-  background:#fff;color:#251332;font-weight:bold;cursor:pointer;
-}
-</style>
-</head>
-<body>
-<div class="container">
-  <h1>💣 Démineur</h1>
-  <div class="info">15 × 15 · 31 mines</div>
-  <div id="status">Bonne chance !</div>
-  <div id="game"></div>
-  <button id="restart">Recommencer</button>
-</div>
-
-<script>
 const ROWS = 15;
 const COLS = 15;
-const TOTAL_MINES = 31;
 
-let board = [];
-let gameOver = false;
-let flags = new Set();
-let pressTimer = null;
-let longPressTriggered = false;
+const minePositions = new Set([
+  "0,3",
+  "0,11",
+  "1,7",
+  "2,1",
+  "2,14",
+  "3,5",
+  "3,9",
+  "4,2",
+  "4,12",
+  "5,8",
+  "6,0",
+  "6,6",
+  "6,13",
+  "7,4",
+  "7,10",
+  "8,1",
+  "8,11",
+  "9,7",
+  "9,12",
+  "10,3",
+  "10,14",
+  "11,5",
+  "11,9",
+  "12,2",
+  "12,12",
+  "13,6",
+  "13,10",
+  "14,0",
+  "14,8",
+  "14,13",
+  "5,3"
+]);
 
-function key(r,c){ return `${r},${c}`; }
+function isMine(row, col) {
+  return minePositions.has(`${row},${col}`);
+}
 
-function createBoard(){
-  gameOver = false;
-  flags = new Set();
-  board = Array.from({length:ROWS}, () =>
-    Array.from({length:COLS}, () => ({revealed:false, number:null, mine:false}))
-  );
+function getNumber(row, col) {
+  let count = 0;
 
-  const game = document.getElementById("game");
-  game.innerHTML = "";
+  for (let dr = -1; dr <= 1; dr++) {
+    for (let dc = -1; dc <= 1; dc++) {
+      if (dr === 0 && dc === 0) continue;
 
-  for(let r=0;r<ROWS;r++){
-    for(let c=0;c<COLS;c++){
-      const cell = document.createElement("button");
-      cell.className = "cell";
-      cell.dataset.row = r;
-      cell.dataset.col = c;
+      const r = row + dr;
+      const c = col + dc;
 
-      cell.addEventListener("mousedown", startPress);
-      cell.addEventListener("touchstart", startPress, {passive:true});
-      cell.addEventListener("mouseup", endPress);
-      cell.addEventListener("mouseleave", cancelPress);
-      cell.addEventListener("touchend", endPress);
-      cell.addEventListener("touchcancel", cancelPress);
-
-      game.appendChild(cell);
+      if (
+        r >= 0 &&
+        r < ROWS &&
+        c >= 0 &&
+        c < COLS &&
+        isMine(r, c)
+      ) {
+        count++;
+      }
     }
   }
 
-  document.getElementById("status").textContent = "Bonne chance !";
+  return count;
 }
 
-function startPress(e){
-  if(gameOver) return;
-  longPressTriggered = false;
-  const cell = e.currentTarget;
-  pressTimer = setTimeout(() => {
-    longPressTriggered = true;
-    toggleFlag(+cell.dataset.row, +cell.dataset.col);
-  }, 500);
-}
+function getSafeArea(startRow, startCol) {
+  const result = [];
+  const visited = new Set();
+  const queue = [[startRow, startCol]];
 
-function endPress(e){
-  if(pressTimer) clearTimeout(pressTimer);
-  pressTimer = null;
+  while (queue.length > 0) {
+    const [row, col] = queue.shift();
+    const key = `${row},${col}`;
 
-  if(gameOver || longPressTriggered) return;
+    if (visited.has(key)) continue;
+    visited.add(key);
 
-  const cell = e.currentTarget;
-  handleShortClick(+cell.dataset.row, +cell.dataset.col);
-}
+    if (
+      row < 0 ||
+      row >= ROWS ||
+      col < 0 ||
+      col >= COLS ||
+      isMine(row, col)
+    ) {
+      continue;
+    }
 
-function cancelPress(){
-  if(pressTimer) clearTimeout(pressTimer);
-  pressTimer = null;
-}
+    const number = getNumber(row, col);
 
-function toggleFlag(r,c){
-  if(board[r][c].revealed) return;
-
-  const k = key(r,c);
-  if(flags.has(k)){
-    flags.delete(k);
-  }else{
-    flags.add(k);
-  }
-  renderCell(r,c);
-}
-
-async function handleShortClick(r,c){
-  if(gameOver || board[r][c].revealed || flags.has(key(r,c))) return;
-
-  document.getElementById("status").textContent = "Vérification…";
-
-  try{
-    const response = await fetch("/api/game", {
-      method:"POST",
-      headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({row:r,col:c})
+    result.push({
+      row,
+      col,
+      number
     });
 
-    if(!response.ok) throw new Error("Erreur serveur");
+    if (number === 0) {
+      for (let dr = -1; dr <= 1; dr++) {
+        for (let dc = -1; dc <= 1; dc++) {
+          if (dr === 0 && dc === 0) continue;
 
-    const result = await response.json();
+          const r = row + dr;
+          const c = col + dc;
 
-    if(result.mine){
-      board[r][c].mine = true;
-      renderCell(r,c);
-      gameOver = true;
-      document.getElementById("status").textContent = "💥 Perdu !";
-      return;
-    }
+          if (
+            r >= 0 &&
+            r < ROWS &&
+            c >= 0 &&
+            c < COLS
+          ) {
+            const neighborKey = `${r},${c}`;
 
-    for(const cell of result.cells){
-      board[cell.row][cell.col].revealed = true;
-      board[cell.row][cell.col].number = cell.number;
-    }
-
-    for(const cell of result.cells) renderCell(cell.row,cell.col);
-
-    checkWin();
-    if(!gameOver) document.getElementById("status").textContent = "Continue !";
-  }catch(error){
-    document.getElementById("status").textContent =
-      "Impossible de contacter le serveur.";
-    console.error(error);
-  }
-}
-
-function renderCell(r,c){
-  const el = document.querySelector(
-    `.cell[data-row="${r}"][data-col="${c}"]`
-  );
-  const data = board[r][c];
-
-  el.className = "cell";
-
-  if(data.mine){
-    el.classList.add("mine");
-    el.textContent = "💣";
-    return;
-  }
-
-  if(data.revealed){
-    el.classList.add("revealed");
-    el.textContent = data.number === 0 ? "" : data.number;
-  }else if(flags.has(key(r,c))){
-    el.classList.add("flagged");
-    el.textContent = "🚩";
-  }else{
-    el.textContent = "";
-  }
-}
-
-function checkWin(){
-  let revealed = 0;
-
-  for(let r=0;r<ROWS;r++){
-    for(let c=0;c<COLS;c++){
-      if(board[r][c].revealed) revealed++;
+            if (!visited.has(neighborKey) && !isMine(r, c)) {
+              queue.push([r, c]);
+            }
+          }
+        }
+      }
     }
   }
 
-  if(revealed === ROWS * COLS - TOTAL_MINES){
-    gameOver = true;
-    document.getElementById("status").textContent = "🎉 Bravo, gagné !";
-  }
+  return result;
 }
 
-document.getElementById("restart").addEventListener("click", createBoard);
-createBoard();
-</script>
-</body>
-</html>
+export async function onRequestPost(context) {
+  try {
+    const body = await context.request.json();
+
+    const row = Number(body.row);
+    const col = Number(body.col);
+
+    if (
+      !Number.isInteger(row) ||
+      !Number.isInteger(col) ||
+      row < 0 ||
+      row >= ROWS ||
+      col < 0 ||
+      col >= COLS
+    ) {
+      return Response.json(
+        { error: "Invalid coordinates" },
+        { status: 400 }
+      );
+    }
+
+    if (isMine(row, col)) {
+      return Response.json({
+        mine: true
+      });
+    }
+
+    return Response.json({
+      mine: false,
+      cells: getSafeArea(row, col)
+    });
+  } catch (error) {
+    return Response.json(
+      { error: "Invalid request" },
+      { status: 400 }
+    );
+  }
+}
