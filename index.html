@@ -1,400 +1,694 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Démineur 15x15</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Démineur</title>
 
-<style>
-* {
-  box-sizing: border-box;
-}
+  <style>
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
 
-body {
-  margin: 0;
-  min-height: 100vh;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  font-family: Arial, sans-serif;
-  background: #1b102b;
-  color: #fff;
-}
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: #222;
+      font-family: Arial, Helvetica, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      color: #111;
+    }
 
-.container {
-  text-align: center;
-  padding: 20px;
-}
+    .game {
+      width: min(96vw, 700px);
+      background: #c0c0c0;
+      border: 4px solid #808080;
+      border-top-color: #fff;
+      border-left-color: #fff;
+      padding: 12px;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+    }
 
-h1 {
-  margin: 0 0 10px;
-  font-size: 28px;
-}
+    /* TITRE */
+    .title {
+      text-align: center;
+      font-size: 32px;
+      font-weight: bold;
+      margin-bottom: 10px;
+      color: #222;
+      text-shadow: 1px 1px #fff;
+    }
 
-.info {
-  margin-bottom: 15px;
-  color: #d9c8e8;
-}
+    /* PANNEAU DU HAUT */
+    .top-panel {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #bdbdbd;
+      border: 4px solid #808080;
+      border-top-color: #404040;
+      border-left-color: #404040;
+      padding: 8px 12px;
+      margin-bottom: 12px;
+    }
 
-#status {
-  min-height: 24px;
-  margin: 10px 0;
-  font-weight: bold;
-}
+    .counter {
+      background: #111;
+      color: #ff2020;
+      font-family: "Courier New", monospace;
+      font-size: 28px;
+      font-weight: bold;
+      min-width: 70px;
+      text-align: center;
+      padding: 3px 6px;
+      border: 2px solid #555;
+    }
 
-#game {
-  display: grid;
-  grid-template-columns: repeat(15, 1fr);
-  gap: 2px;
-  width: min(90vw, 600px);
-  aspect-ratio: 1 / 1;
-  margin: auto;
-  user-select: none;
-  -webkit-user-select: none;
-  touch-action: manipulation;
-}
+    .restart {
+      width: 52px;
+      height: 52px;
+      background: #c0c0c0;
+      border: 4px solid #fff;
+      border-right-color: #555;
+      border-bottom-color: #555;
+      font-size: 29px;
+      cursor: pointer;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
 
-.cell {
-  border: 0;
-  border-radius: 3px;
-  background: #6b4b83;
-  color: #fff;
-  font-weight: bold;
-  font-size: clamp(10px, 2.5vw, 20px);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-}
+    .restart:active {
+      border: 4px solid #555;
+      border-right-color: #fff;
+      border-bottom-color: #fff;
+    }
 
-.cell:hover {
-  background: #7d5a96;
-}
+    /* PLATEAU */
+    .board-container {
+      background: #808080;
+      border: 4px solid #404040;
+      border-top-color: #fff;
+      border-left-color: #fff;
+      padding: 5px;
+      overflow: auto;
+    }
 
-.cell.revealed {
-  background: #d8cce0;
-  color: #24142f;
-  cursor: default;
-}
+    .board {
+      display: grid;
+      grid-template-columns: repeat(15, 1fr);
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      user-select: none;
+      touch-action: manipulation;
+    }
 
-.cell.flagged {
-  background: #8b5f9f;
-}
+    /* CASES */
+    .cell {
+      min-width: 0;
+      min-height: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
 
-.cell.mine {
-  background: #b54b5a;
-}
+      background: #c0c0c0;
 
-button#restart {
-  margin-top: 18px;
-  padding: 10px 18px;
-  border: 0;
-  border-radius: 8px;
-  background: #fff;
-  color: #251332;
-  font-weight: bold;
-  cursor: pointer;
-}
-</style>
+      border: 3px solid #fff;
+      border-right-color: #7b7b7b;
+      border-bottom-color: #7b7b7b;
+
+      font-size: clamp(12px, 3vw, 25px);
+      font-weight: bold;
+
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .cell.revealed {
+      background: #c0c0c0;
+      border: 1px solid #8b8b8b;
+      cursor: default;
+    }
+
+    .cell.flag {
+      color: red;
+      font-size: clamp(13px, 3vw, 25px);
+    }
+
+    .cell.mine {
+      background: #e00000;
+      border: 1px solid #8b0000;
+    }
+
+    /* COULEURS DES CHIFFRES */
+    .number-1 {
+      color: #0000ff;
+    }
+
+    .number-2 {
+      color: #008000;
+    }
+
+    .number-3 {
+      color: #ff0000;
+    }
+
+    .number-4 {
+      color: #000080;
+    }
+
+    .number-5 {
+      color: #800000;
+    }
+
+    .number-6 {
+      color: #008080;
+    }
+
+    .number-7 {
+      color: #000000;
+    }
+
+    .number-8 {
+      color: #808080;
+    }
+
+    /* MESSAGE */
+    .message {
+      text-align: center;
+      min-height: 32px;
+      margin-top: 10px;
+      font-size: 20px;
+      font-weight: bold;
+    }
+
+    .win {
+      color: #087b08;
+    }
+
+    .lose {
+      color: #c00000;
+    }
+
+    /* MOBILE */
+    @media (max-width: 500px) {
+      body {
+        align-items: flex-start;
+        padding-top: 10px;
+      }
+
+      .game {
+        width: 98vw;
+        padding: 7px;
+      }
+
+      .title {
+        font-size: 25px;
+      }
+
+      .top-panel {
+        padding: 5px;
+      }
+
+      .counter {
+        font-size: 22px;
+        min-width: 60px;
+      }
+
+      .restart {
+        width: 44px;
+        height: 44px;
+        font-size: 24px;
+      }
+
+      .cell {
+        border-width: 2px;
+      }
+    }
+  </style>
 </head>
 
 <body>
 
-<div class="container">
+  <div class="game">
 
-  <h1>💣 Démineur</h1>
+    <div class="title">
+      💣 Démineur
+    </div>
 
-  <!-- Le nombre de mines est volontairement caché -->
-  <div class="info">15 × 15</div>
+    <div class="top-panel">
 
-  <div id="status">Bonne chance !</div>
+      <div class="counter" id="flagCounter">
+        000
+      </div>
 
-  <div id="game"></div>
+      <button class="restart" id="restart" aria-label="Recommencer">
+        🙂
+      </button>
 
-  <button id="restart">Recommencer</button>
+      <div class="counter" id="timer">
+        000
+      </div>
 
-</div>
+    </div>
+
+    <div class="board-container">
+      <div class="board" id="board"></div>
+    </div>
+
+    <div class="message" id="message"></div>
+
+  </div>
+
 
 <script>
-const ROWS = 15;
-const COLS = 15;
-const TOTAL_MINES = 31;
 
-let board = [];
-let gameOver = false;
-let flags = new Set();
-let pressTimer = null;
-let longPressTriggered = false;
+  const ROWS = 15;
+  const COLS = 15;
 
-function key(r, c) {
-  return `${r},${c}`;
-}
+  /*
+    IMPORTANT :
+    Les positions des bombes NE SONT PAS dans ce fichier.
 
-function createBoard() {
-  gameOver = false;
-  flags = new Set();
+    Elles sont conservées dans :
+    functions/api/game.js
 
-  board = Array.from(
-    { length: ROWS },
-    () =>
-      Array.from(
-        { length: COLS },
-        () => ({
-          revealed: false,
-          number: null,
-          mine: false
-        })
-      )
-  );
+    Le navigateur demande simplement au serveur
+    ce qu'il y a dans la case cliquée.
+  */
 
-  const game = document.getElementById("game");
-  game.innerHTML = "";
+  const board = document.getElementById("board");
+  const message = document.getElementById("message");
+  const restartButton = document.getElementById("restart");
+  const flagCounter = document.getElementById("flagCounter");
+  const timerDisplay = document.getElementById("timer");
 
-  for (let r = 0; r < ROWS; r++) {
-    for (let c = 0; c < COLS; c++) {
-
-      const cell = document.createElement("button");
-
-      cell.className = "cell";
-
-      cell.dataset.row = r;
-      cell.dataset.col = c;
-
-      cell.addEventListener("mousedown", startPress);
-      cell.addEventListener(
-        "touchstart",
-        startPress,
-        { passive: true }
-      );
-
-      cell.addEventListener("mouseup", endPress);
-      cell.addEventListener("mouseleave", cancelPress);
-
-      cell.addEventListener("touchend", endPress);
-      cell.addEventListener("touchcancel", cancelPress);
-
-      game.appendChild(cell);
-    }
-  }
-
-  document.getElementById("status").textContent =
-    "Bonne chance !";
-}
-
-function startPress(e) {
-
-  if (gameOver) return;
-
-  longPressTriggered = false;
-
-  const cell = e.currentTarget;
-
-  pressTimer = setTimeout(() => {
-
-    longPressTriggered = true;
-
-    toggleFlag(
-      +cell.dataset.row,
-      +cell.dataset.col
-    );
-
-  }, 500);
-}
-
-function endPress(e) {
-
-  if (pressTimer) {
-    clearTimeout(pressTimer);
-  }
-
-  pressTimer = null;
-
-  if (gameOver || longPressTriggered) {
-    return;
-  }
-
-  const cell = e.currentTarget;
-
-  handleShortClick(
-    +cell.dataset.row,
-    +cell.dataset.col
-  );
-}
-
-function cancelPress() {
-
-  if (pressTimer) {
-    clearTimeout(pressTimer);
-  }
-
-  pressTimer = null;
-}
-
-function toggleFlag(r, c) {
-
-  if (board[r][c].revealed) {
-    return;
-  }
-
-  const k = key(r, c);
-
-  if (flags.has(k)) {
-    flags.delete(k);
-  } else {
-    flags.add(k);
-  }
-
-  renderCell(r, c);
-}
-
-async function handleShortClick(r, c) {
-
-  if (
-    gameOver ||
-    board[r][c].revealed ||
-    flags.has(key(r, c))
-  ) {
-    return;
-  }
-
-  document.getElementById("status").textContent =
-    "Vérification…";
-
-  try {
-
-    const response = await fetch("/api/game", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        row: r,
-        col: c
-      })
-    });
-
-    if (!response.ok) {
-      throw new Error("Erreur serveur");
-    }
-
-    const result = await response.json();
-
-    if (result.mine) {
-
-      board[r][c].mine = true;
-
-      renderCell(r, c);
-
-      gameOver = true;
-
-      document.getElementById("status").textContent =
-        "💥 Perdu !";
-
-      return;
-    }
-
-    for (const cell of result.cells) {
-
-      board[cell.row][cell.col].revealed = true;
-
-      board[cell.row][cell.col].number =
-        cell.number;
-    }
-
-    for (const cell of result.cells) {
-      renderCell(cell.row, cell.col);
-    }
-
-    checkWin();
-
-    if (!gameOver) {
-      document.getElementById("status").textContent =
-        "Continue !";
-    }
-
-  } catch (error) {
-
-    document.getElementById("status").textContent =
-      "Impossible de contacter le serveur.";
-
-    console.error(error);
-  }
-}
-
-function renderCell(r, c) {
-
-  const el = document.querySelector(
-    `.cell[data-row="${r}"][data-col="${c}"]`
-  );
-
-  const data = board[r][c];
-
-  el.className = "cell";
-
-  if (data.mine) {
-
-    el.classList.add("mine");
-
-    el.textContent = "💣";
-
-    return;
-  }
-
-  if (data.revealed) {
-
-    el.classList.add("revealed");
-
-    el.textContent =
-      data.number === 0
-        ? ""
-        : data.number;
-
-  } else if (flags.has(key(r, c))) {
-
-    el.classList.add("flagged");
-
-    el.textContent = "🚩";
-
-  } else {
-
-    el.textContent = "";
-  }
-}
-
-function checkWin() {
-
+  let cells = [];
+  let gameOver = false;
+  let flags = 0;
   let revealed = 0;
+  let timer = 0;
+  let timerInterval = null;
+  let gameStarted = false;
 
-  for (let r = 0; r < ROWS; r++) {
-    for (let c = 0; c < COLS; c++) {
 
-      if (board[r][c].revealed) {
-        revealed++;
+  /* =========================
+     CRÉATION DU PLATEAU
+  ========================= */
+
+  function createBoard() {
+
+    board.innerHTML = "";
+
+    cells = [];
+    gameOver = false;
+    flags = 0;
+    revealed = 0;
+    timer = 0;
+    gameStarted = false;
+
+    clearInterval(timerInterval);
+
+    timerDisplay.textContent = "000";
+    flagCounter.textContent = "000";
+    message.textContent = "";
+    message.className = "message";
+
+    restartButton.textContent = "🙂";
+
+    for (let row = 0; row < ROWS; row++) {
+
+      cells[row] = [];
+
+      for (let col = 0; col < COLS; col++) {
+
+        const cell = document.createElement("div");
+
+        cell.className = "cell";
+
+        cell.dataset.row = row;
+        cell.dataset.col = col;
+
+        /*
+          Clic court
+        */
+        cell.addEventListener("click", function() {
+          handleClick(row, col);
+        });
+
+        /*
+          Clic droit pour drapeau
+        */
+        cell.addEventListener("contextmenu", function(event) {
+          event.preventDefault();
+          toggleFlag(row, col);
+        });
+
+        /*
+          Appui long sur téléphone
+        */
+        let pressTimer = null;
+        let longPress = false;
+
+        cell.addEventListener("pointerdown", function() {
+
+          longPress = false;
+
+          pressTimer = setTimeout(() => {
+
+            longPress = true;
+            toggleFlag(row, col);
+
+          }, 500);
+
+        });
+
+        cell.addEventListener("pointerup", function() {
+          clearTimeout(pressTimer);
+        });
+
+        cell.addEventListener("pointerleave", function() {
+          clearTimeout(pressTimer);
+        });
+
+        cells[row][col] = {
+          element: cell,
+          revealed: false,
+          flagged: false
+        };
+
+        board.appendChild(cell);
       }
     }
   }
 
-  if (
-    revealed ===
-    ROWS * COLS - TOTAL_MINES
-  ) {
+
+  /* =========================
+     TIMER
+  ========================= */
+
+  function startTimer() {
+
+    if (gameStarted) return;
+
+    gameStarted = true;
+
+    timerInterval = setInterval(() => {
+
+      timer++;
+
+      if (timer > 999) {
+        timer = 999;
+      }
+
+      timerDisplay.textContent =
+        String(timer).padStart(3, "0");
+
+    }, 1000);
+  }
+
+
+  /* =========================
+     CLIC SUR UNE CASE
+  ========================= */
+
+  async function handleClick(row, col) {
+
+    if (gameOver) return;
+
+    const cell = cells[row][col];
+
+    if (cell.revealed || cell.flagged) {
+      return;
+    }
+
+    startTimer();
+
+    restartButton.textContent = "😮";
+
+    try {
+
+      const response = await fetch("/api/game", {
+
+        method: "POST",
+
+        headers: {
+          "Content-Type": "application/json"
+        },
+
+        body: JSON.stringify({
+          row: row,
+          col: col
+        })
+
+      });
+
+      if (!response.ok) {
+        throw new Error("Erreur serveur");
+      }
+
+      const data = await response.json();
+
+
+      /*
+        BOMBE
+      */
+
+      if (data.mine) {
+
+        loseGame(row, col);
+
+        return;
+      }
+
+
+      /*
+        ZONE SÛRE
+      */
+
+      if (Array.isArray(data.cells)) {
+
+        data.cells.forEach(item => {
+
+          revealCell(
+            item.row,
+            item.col,
+            item.number
+          );
+
+        });
+
+      }
+
+      checkWin();
+
+    } catch (error) {
+
+      console.error(error);
+
+      message.textContent =
+        "Erreur de connexion au serveur.";
+
+      message.className = "message lose";
+    }
+  }
+
+
+  /* =========================
+     RÉVÉLER UNE CASE
+  ========================= */
+
+  function revealCell(row, col, number) {
+
+    if (
+      row < 0 ||
+      row >= ROWS ||
+      col < 0 ||
+      col >= COLS
+    ) {
+      return;
+    }
+
+    const cell = cells[row][col];
+
+    if (cell.revealed) {
+      return;
+    }
+
+    cell.revealed = true;
+    revealed++;
+
+    cell.element.classList.add("revealed");
+
+    cell.element.classList.remove(
+      "number-1",
+      "number-2",
+      "number-3",
+      "number-4",
+      "number-5",
+      "number-6",
+      "number-7",
+      "number-8"
+    );
+
+    if (number > 0) {
+
+      cell.element.textContent = number;
+
+      cell.element.classList.add(
+        "number-" + number
+      );
+
+    } else {
+
+      cell.element.textContent = "";
+
+    }
+  }
+
+
+  /* =========================
+     DRAPEAU
+  ========================= */
+
+  function toggleFlag(row, col) {
+
+    if (gameOver) return;
+
+    const cell = cells[row][col];
+
+    if (cell.revealed) {
+      return;
+    }
+
+    if (cell.flagged) {
+
+      cell.flagged = false;
+      flags--;
+
+      cell.element.textContent = "";
+
+      cell.element.classList.remove("flag");
+
+    } else {
+
+      cell.flagged = true;
+      flags++;
+
+      cell.element.textContent = "🚩";
+
+      cell.element.classList.add("flag");
+    }
+
+    /*
+      On affiche seulement le nombre de drapeaux
+      posés par le joueur.
+
+      Le nombre total de bombes est volontairement
+      JAMAIS affiché.
+    */
+
+    flagCounter.textContent =
+      String(flags).padStart(3, "0");
+  }
+
+
+  /* =========================
+     DÉFAITE
+  ========================= */
+
+  function loseGame(clickedRow, clickedCol) {
 
     gameOver = true;
 
-    document.getElementById("status").textContent =
-      "🎉 Bravo, gagné !";
-  }
-}
+    clearInterval(timerInterval);
 
-document
-  .getElementById("restart")
-  .addEventListener(
+    restartButton.textContent = "😵";
+
+    message.textContent = "💥 BOOM ! Perdu !";
+    message.className = "message lose";
+
+    const clickedCell =
+      cells[clickedRow][clickedCol];
+
+    clickedCell.element.textContent = "💣";
+    clickedCell.element.classList.add("mine");
+
+  }
+
+
+  /* =========================
+     VICTOIRE
+  ========================= */
+
+  function checkWin() {
+
+    /*
+      15 x 15 = 225 cases.
+
+      Le nombre de bombes n'est pas nécessaire
+      pour l'affichage et n'est jamais envoyé
+      au navigateur.
+    */
+
+    const totalCells = ROWS * COLS;
+
+    if (revealed >= totalCells - 31) {
+
+      gameOver = true;
+
+      clearInterval(timerInterval);
+
+      restartButton.textContent = "😎";
+
+      message.textContent =
+        "🎉 Bravo ! Tu as gagné !";
+
+      message.className =
+        "message win";
+
+      /*
+        On marque automatiquement les cases
+        restantes comme drapeaux visuels.
+      */
+
+      for (let row = 0; row < ROWS; row++) {
+
+        for (let col = 0; col < COLS; col++) {
+
+          const cell = cells[row][col];
+
+          if (!cell.revealed && !cell.flagged) {
+
+            cell.element.textContent = "🚩";
+            cell.element.classList.add("flag");
+
+          }
+        }
+      }
+    }
+  }
+
+
+  /* =========================
+     RECOMMENCER
+  ========================= */
+
+  restartButton.addEventListener(
     "click",
     createBoard
   );
 
-createBoard();
+
+  /* =========================
+     LANCEMENT
+  ========================= */
+
+  createBoard();
+
 </script>
 
 </body>
